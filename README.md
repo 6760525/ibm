@@ -8,7 +8,7 @@ This is the final capstone project.
 -run the tests
 
 ```bash
-docker build -t my-flask-app .   
-docker run -p 5000:5000 my-flask-app   
+docker build -t app .   
+docker run -p 8080:8080 app   
 python run-tests.py    
 ```
