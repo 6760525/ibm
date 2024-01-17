@@ -117,16 +117,17 @@ def model_load(prefix='sl', data_dir=None, training=True):
     """
 
     if not data_dir:
-        data_dir = os.path.join("..", "cs-train")
+        data_dir = os.path.join("cs-train")
     
-    models = [f for f in os.listdir(os.path.join(".","models")) if re.search("sl",f)]
+    models = [f for f in os.listdir(os.path.join("models")) if re.search("sl",f)]
+
 
     if len(models) == 0:
         raise Exception("Models with prefix '{}' cannot be found did you train?".format(prefix))
 
     all_models = {}
     for model in models:
-        all_models[re.split("-",model)[1]] = joblib.load(os.path.join("..","models",model))
+        all_models[re.split("-",model)[1]] = joblib.load(os.path.join("models",model))
 
     ## load data
     ts_data = fetch_ts(data_dir)

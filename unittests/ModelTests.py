@@ -7,6 +7,9 @@ model tests
 import unittest
 
 ## import model specific functions and variables
+## model isnt in the same directory as this file, so we need to go up a level
+import os,sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from model import *
 
 class ModelTest(unittest.TestCase):
@@ -20,8 +23,8 @@ class ModelTest(unittest.TestCase):
         """
 
         ## train the model
-        model_train(test=True)
-        self.assertTrue(os.path.exists(SAVED_MODEL))
+        model_train(data_dir="cs-train", test=True)
+        self.assertTrue(os.path.exists("models/test-all-0_1.joblib"))
 
     def test_02_load(self):
         """
@@ -29,8 +32,10 @@ class ModelTest(unittest.TestCase):
         """
                         
         ## train the model
-        model = model_load()
+        all_data, all_models = model_load(data_dir="cs-train")
+        model = all_models['netherlands']
         
+        # ensure that the model object has the correct structure
         self.assertTrue('predict' in dir(model))
         self.assertTrue('fit' in dir(model))
 
@@ -44,15 +49,19 @@ class ModelTest(unittest.TestCase):
         model = model_load()
     
         ## ensure that a list can be passed
-        query = {'country': ['united_states','singapore','united_states'],
-                 'age': [24,42,20],
-                 'subscriber_type': ['aavail_basic','aavail_premium','aavail_basic'],
-                 'num_streams': [8,17,14]
+        query = {'country': 'netherlands',
+                 'year': '2018',
+                 'month': '1',
+                 'day': '5'
         }
 
-        result = model_predict(query,model,test=True)
+        result = model_predict(country=query['country'],
+                               year=query['year'],
+                               month=query['month'],
+                               day=query['day'],
+                               test=True)
         y_pred = result['y_pred']
-        self.assertTrue(y_pred[0] in [0,1])
+        self.assertTrue(y_pred[0] > 0.0)
 
           
 ### Run the tests

@@ -116,7 +116,7 @@ def fetch_ts(data_dir, clean=False):
     use clean=True when you want to re-create the files
     """
 
-    ts_data_dir = os.path.join("..", "cs-train", "ts-data")
+    ts_data_dir = os.path.join(".", "cs-train", "ts-data")
     
     if clean:
         shutil.rmtree(ts_data_dir)

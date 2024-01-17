@@ -11,8 +11,8 @@ import numpy as np
 
 
 ## import model specific functions and variables
-from solution_guidance.model import model_train, model_load, model_predict
-from solution_guidance.model import MODEL_VERSION, MODEL_VERSION_NOTE
+from model import model_train, model_load, model_predict
+from model import MODEL_VERSION, MODEL_VERSION_NOTE
 
 app = Flask(__name__)
 
