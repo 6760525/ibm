@@ -1,5 +1,5 @@
-\venv
-\sol
-\__pycache__
-unittests\__pycache__
-solution_guidance\__pycache__
+venv/
+sol/
+__pycache__/
+unittests/__pycache__
+solution_guidance/__pycache__
