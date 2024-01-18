@@ -1,50 +1,92 @@
-import os, csv, uuid, time
-from datetime import date, datetime
+#!/usr/bin/env python
 
-if not os.path.exists(os.path.join(".", "logs")):
-    os.mkdir("logs")
+import time,os,re,csv,sys,uuid,joblib
+import pandas as pd
+from datetime import date
 
-def update_train_log(tag, period, rmse, runtime, MODEL_VERSION, MODEL_VERSION_NOTE, test=False):
-    today = date.today()
-    if test:
-        logfile = os.path.join("logs", "train-test.log")
-    else:
-        logfile = os.path.join("logs", f"train-{today.year}-{today.month}.log")
-        
-    header = ['unique_id', 'timestamp', 'tag', 'period', 'eval_test', 'model_version', 'model_version_note', 'runtime']
-    write_header = False
-    if not os.path.exists(logfile):
-        write_header = True
+PROJECT_DIR = "."
+LOG_DIR = os.path.join("logs")
 
-    with open(logfile, 'a') as csvfile:
-        writer = csv.writer(csvfile, delimiter=',')
-        if write_header:
-            writer.writerow(header)
 
-        to_write = map(str, [uuid.uuid4(), time.time(), tag, period, rmse, MODEL_VERSION, MODEL_VERSION_NOTE, runtime])
-        writer.writerow(to_write)
+## import mode
+from data_ingestion import DEV
 
-def update_predict_log(country, y_pred, y_proba, target_date, runtime, MODEL_VERSION, test=False):
-    today = date.today()
-    if test:
-        logfile = os.path.join("logs", "predict-test.log")
-    else:
-        logfile = os.path.join("logs", f"predict-{today.year}-{today.month}.log")
-        
-    header = ['unique_id', 'timestamp', 'country', 'y_pred', 'y_proba', 'target_date', 'model_version', 'runtime']
-    write_header = False
-    if not os.path.exists(logfile):
-        write_header = True
-    with open(logfile, 'a') as csvfile:
-        writer = csv.writer(csvfile, delimiter=',')
-        if write_header:
-            writer.writerow(header)
-
-        to_write = map(str, [uuid.uuid4(), country, y_pred, y_proba, target_date, MODEL_VERSION, runtime])
-        writer.writerow(to_write)
-
-if __name__ == "__main__":
-    from model import MODEL_VERSION, MODEL_VERSION_NOTE
+def _update_train_log(tag,algorithm,score,runtime,model_version,model_note,dev=DEV, verbose=True):
+    """
+    update train log file
+    """
+    if verbose:
+        print("...updating train log")
     
-    update_train_log(str((100,10)), "", "{'rmse': 0.5}", "00:00:01", MODEL_VERSION, MODEL_VERSION_NOTE,test=True)
-    update_predict_log("[0]", "[0.6, 0.4]", "['united_states', 24, 'aavail_basic', 8]", "", "00:00:01", MODEL_VERSION, test=True)
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+        
+    ## name the logfile using something that cycles with date (day, month, year)    
+    today = date.today()
+    if dev:
+        logfile = "{}-train-{}-{}.log".format("test",today.year, today.month)
+    else:
+        logfile = "{}-train-{}-{}.log".format("prod",today.year, today.month)
+        
+    
+    ## write the data to a csv file
+    logpath = os.path.join(LOG_DIR, logfile)
+    
+    ## write the data to a csv file    
+    header = ["unique_id","timestamp",'tag','score',"runtime",'model_version','model_note']
+    write_header = False
+    if not os.path.exists(logpath):
+        write_header = True
+    with open(logpath,'a') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',', quotechar='|')
+        if write_header:
+            writer.writerow(header)
+
+        to_write = map(str,[uuid.uuid4(),time.time(),tag,algorithm,score,runtime,model_version,model_note])
+        writer.writerow(to_write)
+        
+def _update_predict_log(tag,y_pred,target_date,runtime,model_version,model_note,dev=DEV, verbose=True):
+    """
+    update predict log file
+    """
+    
+    if verbose:
+        print("...update predict log")
+    
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+        
+    ## name the logfile using something that cycles with date (day, month, year)    
+    today = date.today()
+    if dev:
+        logfile = "{}-predict-{}-{}.log".format("test",today.year, today.month)
+    else:
+        logfile = "{}-predict-{}-{}.log".format("prod",today.year, today.month)
+        
+    
+    ## write the data to a csv file
+    logpath = os.path.join(LOG_DIR, logfile)
+    
+    ## write the data to a csv file    
+    header = ["unique_id","timestamp",'tag','y_pred',"target_date","runtime",'model_version','model_note']
+    write_header = False
+    if not os.path.exists(logpath):
+        write_header = True
+    with open(logpath,'a') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',', quotechar='|')
+        if write_header:
+            writer.writerow(header)
+
+        to_write = map(str,[uuid.uuid4(),time.time(),tag,y_pred,target_date,runtime,model_version,model_note])
+        writer.writerow(to_write)
+        
+def log_load(tag,year,month,env,verbose=True):
+    """
+    load requested log file
+    """
+    logfile = "{}-{}-{}-{}.log".format(env,tag,year,month)
+    
+    if verbose:
+        print(logfile)
+    return logfile
+    

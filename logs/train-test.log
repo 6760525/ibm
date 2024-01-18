@@ -1,5 +1,0 @@
-unique_id,timestamp,tag,period,eval_test,model_version,model_version_note,runtime
-10fa4dee-e044-49e6-8d17-897fc18553c3,1705452171.0305262,test,2018-01,{'rmse': 0.5},0.1,test model,00:00:01
-8f9b2077-e506-44b4-ae18-ebc107fa33db,1705452171.0305262,test,2018-01,{'rmse': 0.5},0.1,test model,00:00:01
-d10de8f9-a080-43e4-ae84-b7f4f81efacb,1705452173.455234,all,"('2017-11-30', '2019-05-26')",{'rmse': 30474},0.1,supervised learing model for time-series,000:00:02
-ad908336-3e57-4dd5-ab22-99f7f6f12757,1705452174.5574644,united_kingdom,"('2017-12-02', '2019-05-26')",{'rmse': 42548},0.1,supervised learing model for time-series,000:00:01

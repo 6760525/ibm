@@ -9,7 +9,7 @@ from IPython.display import Image
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set(style="ticks", color_codes=True)
-plt.style.use('seaborn')
+#plt.style.use('seaborn')
 
 ## import functions to load the data
 from data_ingestion import load_feature_matrix
@@ -89,7 +89,9 @@ def create_plots(df):
     # revenue correlation matrix
     fig = plt.figure(figsize=(8,8))
     num_features = ["purchases","unique_invoices","unique_streams","total_views","revenue"]
-    corrmat = df_filter.corr()
+    
+    corrmat = df_filter.select_dtypes(include=[np.number]).corr()
+    
     k = len(num_features) #number of variables for heatmap
     cols = corrmat.nlargest(k, 'revenue')['revenue'].index
     cm = np.corrcoef(df_filter[cols].values.T)

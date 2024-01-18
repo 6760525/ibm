@@ -69,7 +69,7 @@ def _ingest_data(dev=DEV, verbose=True):
     df["invoice_date"] = pd.to_datetime(df[["year","month","day"]])
 
     ## invoice IDs should not contain any letters
-    df["invoice_id"] = df["invoice"].str.replace(pat="\D+", repl="", regex=True).values.astype(int)
+    df["invoice_id"] = df["invoice"].str.replace(pat="\D+", repl="", regex=True).values.astype(np.int)
     df.drop(["invoice"], axis=1, inplace=True)
     
     return df
@@ -184,6 +184,7 @@ if __name__ == "__main__":
   
     ## ingest data
     ts = ingest_ts(dev=DEV)
+    
     print("METADATA")
     for key, item in ts.items():
         print("...{} {}".format(key, item.shape))
