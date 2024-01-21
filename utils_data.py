@@ -21,6 +21,7 @@ import pandas as pd
 TS_DIR = 'ts-data'
 TRAIN_DATA_DIR = 'cs-train'
 TOP_COUNTRIES = 10
+DEV = True
 
 def load_json_files_to_dataframe(data_dir):
     """
@@ -74,7 +75,7 @@ def load_json_files_to_dataframe(data_dir):
     return df
 
 
-def _format_elapsed_time(start_time):
+def format_elapsed_time(start_time):
     """ Calculate and format elapsed time. """
     elapsed_time = time.time() - start_time
     hours, remainder = divmod(elapsed_time, 3600)
@@ -88,9 +89,14 @@ def _clean_directory(directory):
 
 def _load_processed_ts_data(ts_data_dir):
     """ Load processed time series data from CSV files. """
-    return {re.sub(r"\.csv", "", filename)[3:]:
-            pd.read_csv(os.path.join(ts_data_dir, filename))
-            for filename in os.listdir(ts_data_dir)}
+    tsd = {}
+    for filename in os.listdir(ts_data_dir):
+        rn = re.sub(r"\.csv", "", filename)[3:]
+        df = pd.read_csv(os.path.join(ts_data_dir, filename))
+        df['invoice_date'] = pd.to_datetime(df['invoice_date'])
+        tsd[rn] = df
+
+    return tsd
 
 def _save_ts_data(dfs, ts_data_dir):
     """ Save time series data as CSV files. """
@@ -113,6 +119,7 @@ def _convert_to_ts(df, country=None):
         'revenue': ('revenue', 'sum')
     }
     ts_data = df.groupby(group_cols).agg(**agg_funcs).reset_index()
+    ts_data['invoice_date'] = pd.to_datetime(ts_data['invoice_date'])
 
     # Handle country-specific data
     if country:
@@ -125,8 +132,6 @@ def _convert_to_ts(df, country=None):
     if country == None:
         ts_data = ts_data.groupby('invoice_date').sum().reset_index()
 
-
-    ts_data['invoice_date'] = pd.to_datetime(ts_data['invoice_date'])
     ts_data = ts_data.astype({'purchases': 'int',
                               'unique_invoices': 'int',
                               'unique_streams': 'int',
@@ -135,18 +140,32 @@ def _convert_to_ts(df, country=None):
 
     return ts_data
 
-def _process_ts_data(df, top_n=10):
-    """ Process and get time series data for the top N countries. """
-    top_countries = (df.groupby('country')['revenue'].sum()
-                     .nlargest(top_n)
-                     .index.tolist())
+def _process_ts_data(df, top_n=None):
+    """
+    Process and get time series data for the top N countries based on revenue.
+
+    Parameters:
+    df (pandas.DataFrame): DataFrame containing time series data with 'country' and 'revenue' columns.
+    top_n (int, optional): Number of top countries to process. Processes all countries if None.
+
+    Returns:
+    dict: A dictionary of time series DataFrames, one for each of the top N countries and 'all'.
+    """
+    # Determine the actual number of top countries to process
+    top_n = min(top_n or len(df), df['country'].nunique())
+
+    # Identifying top N countries
+    top_countries = df.groupby('country')['revenue'].sum().nlargest(top_n).index
+
+    # Creating time series data for all countries and each of the top N countries
     dfs = {'all': _convert_to_ts(df)}
     for country in top_countries:
-        country_id = re.sub(r'\s+', '_', country.lower())
-        dfs[country_id] = _convert_to_ts(df, country=country)
+        country_df = df[df['country'] == country]
+        dfs[country.lower().replace(' ', '_')] = _convert_to_ts(country_df)
+    
     return dfs
 
-def fetch_ts(data_dir, clean=False):
+def fetch_ts(data_dir, top_n=None, clean=False):
     """
     Convenience function to read in new time series data.
     It loads data from existing CSV files or processes new data if CSV files are not present.
@@ -177,7 +196,7 @@ def fetch_ts(data_dir, clean=False):
     # Process and save new data if no processed data is found
     print("... no processed data found, processing new data")
     df = load_json_files_to_dataframe(data_dir)
-    dfs = _process_ts_data(df, top_n=TOP_COUNTRIES)
+    dfs = _process_ts_data(df, top_n=top_n)
     _save_ts_data(dfs, ts_data_dir)
     return dfs
 
@@ -197,6 +216,7 @@ def engineer_rolling_features(X, shift_days, attributes, func='sum', engineer_ta
     """
     
     X_indexed = X.set_index('invoice_date')
+
     freq = f'{shift_days}D'
 
     if func == 'sum':
@@ -216,6 +236,37 @@ def engineer_rolling_features(X, shift_days, attributes, func='sum', engineer_ta
 
     return X_transformed
 
+def data_for_training(training=False, clean=False, dev=DEV, verbose=True):
+    """
+    engineer feature matrix and target value
+    """
+    ts = fetch_ts(TRAIN_DATA_DIR, clean=False)
+    features = ['purchases', 'unique_invoices', 'unique_streams', 'total_views']
+    all_features = {}
+
+    for country in ts.keys():
+        temp = ts[country]
+
+        # Engineer features
+        for shift in [7, 14, 28, 35, 54]:
+            temp = engineer_rolling_features(X=temp, shift_days=shift, attributes=['revenue'])
+        
+        temp = engineer_rolling_features(temp, 30, features, func='mean')
+        
+        # Engineer target
+        temp = engineer_rolling_features(temp, 30, ['revenue'], engineer_target=True)
+
+        # Drop original features and keep only engineered ones
+        engineered_cols = [col for col in temp.columns if '_m' in col or '_p' in col]
+        temp = temp[['invoice_date'] + engineered_cols]
+
+        all_features[country] = {'X': temp.iloc[:, 1:-1].values,
+                                'y': temp.iloc[:,-1].values,
+                                'invoice_dates': temp['invoice_date'],
+                                'features': temp.iloc[:, 1:-1].columns}
+
+    return all_features
+
 
 if __name__ == '__main__':
     run_start = time.time()
@@ -228,7 +279,7 @@ if __name__ == '__main__':
         print(f'\t{country}: {ddf.shape}')
 
     print('\t' + '-' * 20)
-    print(f'Loading done. Data load time: {_format_elapsed_time(run_start)}\n')
+    print(f'Loading done. Data load time: {format_elapsed_time(run_start)}\n')
     random_key = random.choice(list(df.keys()))
     ds = df[random_key]
     print(f'\nSample Data ({random_key}):')
